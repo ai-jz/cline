@@ -1770,7 +1770,15 @@ export class Task {
 
 					// Handle user clicking "Proceed While Running"
 					if (raceResult === "proceed") {
+						console.log("[DEBUG Task.executeCommandTool] User clicked Proceed While Running")
 						didContinue = true
+
+						// IMPORTANT: Add to DetachedProcessManager BEFORE calling continue()
+						// so it can receive events while the process is still emitting
+						console.log("[DEBUG Task.executeCommandTool] Adding process to DetachedProcessManager BEFORE continue()")
+						this.detachedProcessManager.addProcess(process, command)
+
+						console.log("[DEBUG Task.executeCommandTool] Calling process.continue()")
 						process.continue()
 
 						// Cleanup timers
@@ -1785,9 +1793,6 @@ export class Task {
 							clearTimeout(completionTimer)
 							completionTimer = null
 						}
-
-						// Hand off to DetachedProcessManager for background tracking
-						this.detachedProcessManager.addProcess(process, command)
 
 						// Process any output we captured so far
 						await setTimeoutPromise(50)
@@ -1837,7 +1842,15 @@ export class Task {
 
 				// Handle user clicking "Proceed While Running"
 				if (raceResult === "proceed") {
+					console.log("[DEBUG Task.executeCommandTool] User clicked Proceed While Running (no timeout path)")
 					didContinue = true
+
+					// IMPORTANT: Add to DetachedProcessManager BEFORE calling continue()
+					// so it can receive events while the process is still emitting
+					console.log("[DEBUG Task.executeCommandTool] Adding process to DetachedProcessManager BEFORE continue()")
+					this.detachedProcessManager.addProcess(process, command)
+
+					console.log("[DEBUG Task.executeCommandTool] Calling process.continue()")
 					process.continue()
 
 					// Cleanup timers
@@ -1852,9 +1865,6 @@ export class Task {
 						clearTimeout(completionTimer)
 						completionTimer = null
 					}
-
-					// Hand off to DetachedProcessManager for background tracking
-					this.detachedProcessManager.addProcess(process, command)
 
 					// Process any output we captured so far
 					await setTimeoutPromise(50)
