@@ -413,10 +413,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				const controller = activeWebview?.controller
 
 				const authService = AuthService.getInstance(controller)
-				if (secretValue) {
-					// Secret was added or updated - restore auth info (login from another window)
-					authService?.restoreRefreshTokenAndRetrieveAuthInfo()
-				} else {
+				if (!secretValue) {
 					// Secret was removed - handle logout for all windows
 					authService?.handleDeauth(LogoutReason.CROSS_WINDOW_SYNC)
 				}
