@@ -2,7 +2,7 @@ import { GrpcResponse } from "@shared/ExtensionMessage"
 import { GrpcRequest } from "@shared/WebviewMessage"
 import { GrpcRecorderBuilder } from "@/core/controller/grpc-recorder/grpc-recorder.builder"
 import { ILogFileHandler } from "@/core/controller/grpc-recorder/log-file-handler"
-import { GrpcLogEntry, GrpcSessionLog, SessionStats } from "@/core/controller/grpc-recorder/types"
+import { GrpcLogEntry, GrpcSessionLog, SessionStats, GrpcRequestFilterPredicate } from "@/core/controller/grpc-recorder/types"
 
 export class GrpcRecorderNoops implements IRecorder {
 	recordRequest(_request: GrpcRequest): void {}
@@ -31,16 +31,22 @@ export interface IRecorder {
  * - Tracks request/response lifecycle, including duration and status.
  * - Maintains a session log of all recorded entries.
  * - Persists logs asynchronously through a file handler.
+ * - Supports filtering requests via predicates to reduce log noise.
  */
 export class GrpcRecorder implements IRecorder {
 	private sessionLog: GrpcSessionLog
 	private pendingRequests: Map<string, { entry: GrpcLogEntry; startTime: number }> = new Map()
+	private filters: GrpcRequestFilterPredicate[]
 
-	constructor(private fileHandler: ILogFileHandler) {
+	constructor(
+		private fileHandler: ILogFileHandler,
+		filters: GrpcRequestFilterPredicate[] = [],
+	) {
 		this.sessionLog = {
 			startTime: new Date().toISOString(),
 			entries: [],
 		}
+		this.filters = filters
 
 		this.fileHandler.initialize(this.sessionLog).catch((error) => {
 			console.error("Failed to initialize gRPC log file:", error)
@@ -54,6 +60,7 @@ export class GrpcRecorder implements IRecorder {
 	/**
 	 * Records a gRPC request.
 	 *
+	 * - Evaluates request against filter predicates; if any filter returns true, the request is skipped.
 	 * - Stores the request as a "pending" log entry.
 	 * - Tracks the request start time for later duration calculation.
 	 * - Persists the log asynchronously.
@@ -61,6 +68,20 @@ export class GrpcRecorder implements IRecorder {
 	 * @param request - The incoming gRPC request.
 	 */
 	public recordRequest(request: GrpcRequest): void {
+		// Check if request should be filtered
+		const shouldFilter = this.filters.some((filter) =>
+			filter({
+				service: request.service,
+				method: request.method,
+				is_streaming: request.is_streaming || false,
+				message: request.message,
+			}),
+		)
+
+		if (shouldFilter) {
+			return
+		}
+
 		const entry: GrpcLogEntry = {
 			requestId: request.request_id,
 			service: request.service,

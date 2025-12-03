@@ -28,3 +28,16 @@ export interface GrpcSessionLog {
 	stats?: SessionStats
 	entries: GrpcLogEntry[]
 }
+
+/**
+ * A predicate function that determines whether a gRPC request should be filtered (skipped from logging).
+ *
+ * @param request - The gRPC request to evaluate
+ * @returns true if the request should be filtered (not logged), false otherwise
+ */
+export type GrpcRequestFilterPredicate = (request: {
+	service: string
+	method: string
+	is_streaming: boolean
+	message: any
+}) => boolean
